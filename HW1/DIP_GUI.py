@@ -6,7 +6,6 @@ import tkinter.font as TkFont
 from PIL import  Image,ImageTk
 import cv2
 
-
 def bilinear(array,x,y):
 
     p1=min(int(x),array.shape[0]-1)
@@ -29,9 +28,6 @@ def bilinear(array,x,y):
 
     return level
 
-
-
-
 class DIPGUI(Frame):
     def __init__(self, master=None):
         Frame.__init__(self, master)
@@ -40,6 +36,8 @@ class DIPGUI(Frame):
         self.HEIGHT_SIZE=300
         self.methodList=['Linearly','Exponentially','Logarithmically']
         self.modImgBool=False
+        self.nextMode=0
+        self.degree=0
 
         # set size of window
         master.minsize(width=1080, height=720)
@@ -51,6 +49,7 @@ class DIPGUI(Frame):
         self.saveBtn=Button(master,text='Save',command=self.saveFile)
         self.methodBtn=Button(master,text='Linearly',command=self.methodMode)
         self.histoBtn=Button(master,text='Histogram',command=self.histogram)
+        self.resetBtn=Button(master,text='reset',command=self.reset)
 
         # set scale
         self.methodAScale=Scale(master,orient=HORIZONTAL,from_=0,to=5,resolution=0.5,length=300,command=self.method)
@@ -74,6 +73,7 @@ class DIPGUI(Frame):
         self.saveBtn.place(x=100,y=100)
         self.methodBtn.place(x=100,y=400)
         self.histoBtn.place(x=100,y=570)
+        self.resetBtn.place(x=100,y=150)
 
         self.methodAScale.place(x=250,y=350)
         self.methodBScale.place(x=250,y=400)
@@ -93,6 +93,7 @@ class DIPGUI(Frame):
         except:
             return
         self.imgArray=np.asarray(self.oriImg)
+        self.imgArrayCur=self.imgArray
         imgTmp = self.oriImg.resize((self.WIDTH_SIZE, self.HEIGHT_SIZE),Image.ANTIALIAS)
         self.modImgBool=True
         self.modImg=imgTmp
@@ -115,18 +116,20 @@ class DIPGUI(Frame):
 
     def methodMode(self):
         currMethod=self.methodList.index((self.methodBtn['text']))
-        nextMode=(currMethod+1)%3
-        self.methodBtn['text']=self.methodList[nextMode]
+        self.nextMode=(currMethod+1)%3
+        self.methodBtn['text']=self.methodList[self.nextMode]
 
-        if nextMode==0:
+        if self.nextMode==0:
             self.methodAScale.config(from_=0,to=5,resolution=0.2)
             self.methodBScale.config(from_=-100,to=100,resolution=5)
             self.methodAScale.set(1)
             self.methodBScale.set(0)
-        elif nextMode==1:
+        elif self.nextMode==1:
             self.methodAScale.config(from_=0,to=1,resolution=0.005,digits=5)
             self.methodBScale.config(from_=-50,to=0,resolution=0.5,digits=2)
-        elif nextMode==2:
+            self.methodAScale.set(0)
+            self.methodBScale.set(0)
+        elif self.nextMode==2:
             self.methodAScale.config(from_=0,to=100,resolution=1)
             self.methodBScale.config(from_=1,to=50,resolution=10)
             self.methodAScale.set(0)
@@ -135,7 +138,7 @@ class DIPGUI(Frame):
     def method(self,test):
         if not self.modImgBool:
             return
-        self.modLbl.config(image='')
+        # self.modLbl.config(image='')
         mode=self.methodList.index(self.methodBtn['text'])
         a=self.methodAScale.get()
         b=self.methodBScale.get()
@@ -154,53 +157,60 @@ class DIPGUI(Frame):
         outlier=imgTmpArray > 255
         imgTmpArray[outlier]=255
 
-        imgTmp=Image.fromarray(np.uint8(imgTmpArray))
-        imgTmp=imgTmp.resize((self.WIDTH_SIZE,self.WIDTH_SIZE),Image.ANTIALIAS)
-        self.modImg=imgTmp
-        imgTmp=ImageTk.PhotoImage(imgTmp)
-        self.modLbl.configure(image=imgTmp)
-        self.modLbl.image=imgTmp
+        self.display(imgTmpArray,self.WIDTH_SIZE,self.HEIGHT_SIZE,self.degree)
+        self.imgArrayCur=imgTmpArray
+
+        # imgTmp=Image.fromarray(np.uint8(imgTmpArray))
+        # imgTmp=imgTmp.resize((self.WIDTH_SIZE,self.WIDTH_SIZE),Image.ANTIALIAS)
+        # self.modImg=imgTmp
+        # imgTmp=ImageTk.PhotoImage(imgTmp)
+        # self.modLbl.configure(image=imgTmp)
+        # self.modLbl.image=imgTmp
 
     def sizeChange(self,test):
         time=2**(self.sizeChangeScale.get())
-        print(time)
-        print(self.imgArray.shape)
         # newShape=list(map(int,[self.imgArray.shape[0]*time,self.imgArray.shape[1]*time]))
-        newShape=list(map(int,[self.WIDTH_SIZE*time,self.HEIGHT_SIZE*time]))
+        width=self.WIDTH_SIZE*time
+        height=self.HEIGHT_SIZE*time
+        newShape=list(map(int,[width,height]))
         sizeImg=np.zeros(newShape,dtype=np.uint8)
-        print(sizeImg.shape)
 
         ratio=1/time
-        print(ratio)
 
         for x in range(sizeImg.shape[0]):
             for y in range(sizeImg.shape[1]):
                 oldX=ratio*x
                 oldY=ratio*y
                 sizeImg[x,y]=bilinear(self.imgArray,oldX,oldY)
+                # sizeImg[x,y]=bilinear(self.imgArrayCur,oldX,oldY)
 
-        self.modLbl.destroy()
-        imgTmp=Image.fromarray(np.uint8(sizeImg))
-        imgTmp=imgTmp.resize((sizeImg.shape[0],sizeImg.shape[1]),Image.ANTIALIAS)
-        self.modImg=imgTmp
-        imgTmp=ImageTk.PhotoImage(imgTmp)
-        self.modLbl=Label(bg="white",text="modified",font=("Courier",30),image=imgTmp)
-        self.modLbl.image=imgTmp
-        self.modLbl.place(x=600,y=50)
+
+        self.display(sizeImg,int(width),int(height),0)
+        # self.display(sizeImg,sizeImg.shape[0],sizeImg.shape[1],0)
+
+        # self.modLbl.destroy()
+        # imgTmp=Image.fromarray(np.uint8(sizeImg))
+        # imgTmp=imgTmp.resize((sizeImg.shape[0],sizeImg.shape[1]),Image.ANTIALIAS)
+        # self.modImg=imgTmp
+        # imgTmp=ImageTk.PhotoImage(imgTmp)
+        # self.modLbl=Label(bg="white",text="modified",font=("Courier",30),image=imgTmp)
+        # self.modLbl.image=imgTmp
+        # self.modLbl.place(x=600,y=50)
 
     def rotate(self,test):
-        degree=self.rotateScale.get()
-        self.modLbl.destroy()
-        # self.canvas.delete(self.canvasObj)
-        imgTmp=Image.fromarray(np.uint8(self.imgArray))
-        imgTmp=imgTmp.resize((self.WIDTH_SIZE,self.HEIGHT_SIZE),Image.ANTIALIAS)
-        imgTmp=imgTmp.rotate(degree)
-        self.modImg=imgTmp
-        imgTmp=ImageTk.PhotoImage(imgTmp)
-        # self.canvasObj=self.canvas.create_image(self.WIDTH_SIZE/2,self.HEIGHT_SIZE/2,image=self.imgRo)
-        self.modLbl=Label(bg="white",text="modified",font=("Courier",30),image=imgTmp)
-        self.modLbl.image=imgTmp
-        self.modLbl.place(x=600,y=50)
+        self.degree=self.rotateScale.get()
+        self.display(self.imgArrayCur,self.WIDTH_SIZE,self.HEIGHT_SIZE,d=self.degree)
+        # self.modLbl.destroy()
+        # # self.canvas.delete(self.canvasObj)
+        # imgTmp=Image.fromarray(np.uint8(self.imgArray))
+        # imgTmp=imgTmp.resize((self.WIDTH_SIZE,self.HEIGHT_SIZE),Image.ANTIALIAS)
+        # imgTmp=imgTmp.rotate(degree)
+        # self.modImg=imgTmp
+        # imgTmp=ImageTk.PhotoImage(imgTmp)
+        # # self.canvasObj=self.canvas.create_image(self.WIDTH_SIZE/2,self.HEIGHT_SIZE/2,image=self.imgRo)
+        # self.modLbl=Label(bg="white",text="modified",font=("Courier",30),image=imgTmp)
+        # self.modLbl.image=imgTmp
+        # self.modLbl.place(x=600,y=50)
 
     def histogram(self):
         height=self.imgArray.shape[0]
@@ -237,3 +247,45 @@ class DIPGUI(Frame):
         imgTmp=ImageTk.PhotoImage(imgTmp)
         self.modLbl.configure(image=imgTmp)
         self.modLbl.image=imgTmp
+
+    def reset(self):
+        self.WIDTH_SIZE=300
+        self.HEIGHT_SIZE=300
+
+        self.display(self.imgArray,self.WIDTH_SIZE,self.HEIGHT_SIZE,0)
+        # imgTmp=Image.fromarray(np.uint8(self.imgArray))
+        # imgTmp=imgTmp.resize((self.WIDTH_SIZE,self.WIDTH_SIZE),Image.ANTIALIAS)
+
+        # self.modImg=imgTmp
+        # imgTmp=ImageTk.PhotoImage(imgTmp)
+
+        # self.modLbl.configure(image=imgTmp)
+        # self.modLbl.image=imgTmp
+
+        self.sizeChangeScale.set(0)
+        self.rotateScale.set(0)
+
+        if self.nextMode==0:
+            self.methodAScale.set(1)
+            self.methodBScale.set(0)
+        elif self.nextMode==1:
+            self.methodAScale.set(0)
+            self.methodBScale.set(0)
+        elif self.nextMode==2:
+            self.methodAScale.set(0)
+            self.methodBScale.set(1)
+
+    def display(self,imgTmpArray,width,height,d):
+        # self.modLbl.configure(image='')
+        self.modLbl.destroy()
+        # imgTmp=Image.fromarray(np.uint8(imgTmpArray))
+        imgTmp=Image.fromarray(np.uint8(imgTmpArray))
+        imgTmp=imgTmp.resize((width,height),Image.ANTIALIAS)
+        imgTmp=imgTmp.rotate(d)
+
+        self.modImg=imgTmp
+        
+        imgTmp=ImageTk.PhotoImage(imgTmp)
+        self.modLbl=Label(bg="white",text="modified",font=("Courier",30),image=imgTmp)
+        self.modLbl.image=imgTmp
+        self.modLbl.place(x=600,y=50)

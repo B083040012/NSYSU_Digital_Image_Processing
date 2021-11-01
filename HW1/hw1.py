@@ -3,6 +3,7 @@ from tkinter import *
 
 def main():
     root = Tk()
+    root.configure(background='gray')
     app = DIPGUI(master=root)
     app.mainloop()
     # root.destroy()

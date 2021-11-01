@@ -91,7 +91,7 @@ class DIPGUI(Frame):
 
     # select file by relative path
     def selectFile(self):
-        ifile = tkinter.filedialog.askopenfile(initialdir=os.path.abspath('.'),mode='rb',title='Choose File',filetypes=[("image files",".jpg .png")])
+        ifile = tkinter.filedialog.askopenfile(initialdir=os.path.abspath('.'),mode='rb',title='Choose File',filetypes=[("image files",".jpg .png .jpeg .gif")])
         try:
             self.oriImg = Image.open(ifile)
         except:
@@ -228,9 +228,9 @@ class DIPGUI(Frame):
         result[underfit]=0
 
         self.imgArrayCur=result
-        self.modImg=result
 
         imgTmp=Image.fromarray(np.uint8(result))
+        self.modImg=imgTmp
         imgTmp=ImageTk.PhotoImage(imgTmp)
         self.modLbl.configure(image=imgTmp)
         self.modLbl.image=imgTmp

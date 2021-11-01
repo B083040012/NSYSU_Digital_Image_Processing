@@ -64,6 +64,7 @@ class DIPGUI(Frame):
 
         # set label showing image
         self.oriLbl=Label(bg="white",text="original",font=("Courier",30))
+        # self.canvas=tkinter.Canvas(master,bg='white',width=self.WIDTH_SIZE,height=self.HEIGHT_SIZE)
         self.modLbl=Label(bg='white',text='modified',font=("Courier", 30))
         self.sizeChangeLbl=Label(bg='blue',text='Zoom/Shrink',font=("Courier",10))
         self.rotateLbl=Label(bg='blue',text='Rotate',font=("Courier",10))
@@ -81,6 +82,7 @@ class DIPGUI(Frame):
 
         self.oriLbl.place(x=250,y=50,width=str(self.WIDTH_SIZE),height=str(self.HEIGHT_SIZE))
         self.modLbl.place(x=600,y=50,width=str(self.WIDTH_SIZE),height=str(self.HEIGHT_SIZE))
+        # self.canvas.place(x=600,y=50)
         self.sizeChangeLbl.place(x=100,y=470)
         self.rotateLbl.place(x=100,y=520)
 
@@ -99,6 +101,7 @@ class DIPGUI(Frame):
 
         self.oriLbl.configure(image=imgTmp)
         self.oriLbl.image=imgTmp
+        # self.canvasObj=self.canvas.create_image(self.WIDTH_SIZE/2,self.HEIGHT_SIZE/2,image=imgTmp)
         self.modLbl.configure(image=imgTmp)
         self.modLbl.image=imgTmp
 
@@ -162,7 +165,8 @@ class DIPGUI(Frame):
         time=2**(self.sizeChangeScale.get())
         print(time)
         print(self.imgArray.shape)
-        newShape=list(map(int,[self.imgArray.shape[0]*time,self.imgArray.shape[1]*time]))
+        # newShape=list(map(int,[self.imgArray.shape[0]*time,self.imgArray.shape[1]*time]))
+        newShape=list(map(int,[self.WIDTH_SIZE*time,self.HEIGHT_SIZE*time]))
         sizeImg=np.zeros(newShape,dtype=np.uint8)
         print(sizeImg.shape)
 
@@ -187,11 +191,13 @@ class DIPGUI(Frame):
     def rotate(self,test):
         degree=self.rotateScale.get()
         self.modLbl.destroy()
+        # self.canvas.delete(self.canvasObj)
         imgTmp=Image.fromarray(np.uint8(self.imgArray))
         imgTmp=imgTmp.resize((self.WIDTH_SIZE,self.HEIGHT_SIZE),Image.ANTIALIAS)
         imgTmp=imgTmp.rotate(degree)
         self.modImg=imgTmp
         imgTmp=ImageTk.PhotoImage(imgTmp)
+        # self.canvasObj=self.canvas.create_image(self.WIDTH_SIZE/2,self.HEIGHT_SIZE/2,image=self.imgRo)
         self.modLbl=Label(bg="white",text="modified",font=("Courier",30),image=imgTmp)
         self.modLbl.image=imgTmp
         self.modLbl.place(x=600,y=50)

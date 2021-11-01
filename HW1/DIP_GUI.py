@@ -1,12 +1,26 @@
-import tkinter,os
+# =============Used Package===================
+# tkinter:    sudo pacman -S python3-tk
+# cv2:        sudo pacman -S opencv-python
+# numpy:      pip install numpy
+# scipy:      pip install scipy
+# PIL:        pip install Pillow
+# matplotlib: pip install matplotlib
+# ============================================
+
+# ===============Environment==================
+# Arch Linux (Kernel version: 5.13.13-arch1-1)
+# with python 3.9.6
+# ============================================
+
+import tkinter,os,cv2,math
 import numpy as np
-from tkinter import *
 from scipy import ndimage
 import tkinter.filedialog
 import tkinter.font as TkFont
+from tkinter import *
 from PIL import  Image,ImageTk
 import matplotlib.pyplot as plt
-import cv2,math
+
 
 # bilinear function for sizeChange(zoom/shrink)
 def bilinear(array,x,y):
@@ -31,10 +45,12 @@ def bilinear(array,x,y):
 
     return level
 
+# class DIPGUI for building GUI interface
 class DIPGUI(Frame):
     def __init__(self, master=None):
         Frame.__init__(self, master)
 
+        # set initial variables
         self.WIDTH_SIZE=256
         self.HEIGHT_SIZE=256
         self.widthCur=256
@@ -89,9 +105,9 @@ class DIPGUI(Frame):
         self.sizeChangeLbl.place(x=100,y=470)
         self.rotateLbl.place(x=100,y=520)
 
-    # select file by relative path
+    # select file by relative path and display it
     def selectFile(self):
-        ifile = tkinter.filedialog.askopenfile(initialdir=os.path.abspath('.'),mode='rb',title='Choose File',filetypes=[("image files",".jpg .png .jpeg .gif")])
+        ifile = tkinter.filedialog.askopenfile(initialdir=os.path.abspath('.'),mode='rb',title='Choose File',filetypes=[("image files",".jpg .png .tif .jpeg .gif")])
         try:
             self.oriImg = Image.open(ifile)
         except:
@@ -111,14 +127,14 @@ class DIPGUI(Frame):
 
     # save file from self.modImg on 'modified' frame
     def saveFile(self):
-        ofile=tkinter.filedialog.asksaveasfile(initialdir=os.path.abspath('.'),mode='w',title='Save File',filetypes=([("png files",".jpg .png")]))
+        ofile=tkinter.filedialog.asksaveasfile(initialdir=os.path.abspath('.'),mode='w',title='Save File',filetypes=([("png files",".tif .jpg .png")]))
         if ofile:
             try:
                 self.modImg.save(ofile)
             except:
                 return
 
-    # set method mode by pressing button
+    # set method mode by pressing 'method' button
     def methodMode(self):
         currMethod=self.methodList.index((self.methodBtn['text']))
         self.nextMode=(currMethod+1)%3
@@ -157,12 +173,13 @@ class DIPGUI(Frame):
         elif mode==1:
             imgTmpArray=np.exp(a*imgMode+b)
             
-# =========================================================
-# changing equation into y=a*ln(X+b),because the original equation cannot see the difference easily by modified 'a' and 'b'
+# ======================================================================================
+# changing equation into y=a*ln(X+b),
+# because the original equation cannot see the difference easily by modified 'a' and 'b'
         elif mode==2:
             np.seterr(invalid='ignore',divide='ignore')
             imgTmpArray=np.array(np.log(imgMode+b))*a
-# =========================================================
+# ======================================================================================
 
         outlier=imgTmpArray > 255
         imgTmpArray[outlier]=255

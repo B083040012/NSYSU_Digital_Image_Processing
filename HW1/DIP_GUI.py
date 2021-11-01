@@ -5,8 +5,10 @@ from scipy import ndimage
 import tkinter.filedialog
 import tkinter.font as TkFont
 from PIL import  Image,ImageTk
+import matplotlib.pyplot as plt
 import cv2,math
 
+# bilinear function for sizeChange(zoom/shrink)
 def bilinear(array,x,y):
 
     p1=min(int(x),array.shape[0]-1)
@@ -87,6 +89,7 @@ class DIPGUI(Frame):
         self.sizeChangeLbl.place(x=100,y=470)
         self.rotateLbl.place(x=100,y=520)
 
+    # select file by relative path
     def selectFile(self):
         ifile = tkinter.filedialog.askopenfile(initialdir=os.path.abspath('.'),mode='rb',title='Choose File',filetypes=[("image files",".jpg .png")])
         try:
@@ -106,6 +109,7 @@ class DIPGUI(Frame):
         self.modLbl.configure(image=imgTmp)
         self.modLbl.image=imgTmp
 
+    # save file from self.modImg on 'modified' frame
     def saveFile(self):
         ofile=tkinter.filedialog.asksaveasfile(initialdir=os.path.abspath('.'),mode='w',title='Save File',filetypes=([("png files",".jpg .png")]))
         if ofile:
@@ -114,6 +118,7 @@ class DIPGUI(Frame):
             except:
                 return
 
+    # set method mode by pressing button
     def methodMode(self):
         currMethod=self.methodList.index((self.methodBtn['text']))
         self.nextMode=(currMethod+1)%3
@@ -130,11 +135,12 @@ class DIPGUI(Frame):
             self.methodAScale.set(0)
             self.methodBScale.set(0)
         elif self.nextMode==2:
-            self.methodAScale.config(from_=0,to=100,resolution=1)
+            self.methodAScale.config(from_=0,to=60,resolution=1)
             self.methodBScale.config(from_=1,to=50,resolution=10)
             self.methodAScale.set(0)
             self.methodBScale.set(1)
 
+    # use method according to the current method mode
     def method(self,test):
         if not self.modImgBool:
             return
@@ -151,9 +157,12 @@ class DIPGUI(Frame):
         elif mode==1:
             imgTmpArray=np.exp(a*imgMode+b)
             
-
+# =========================================================
+# changing equation into y=a*ln(X+b),because the original equation cannot see the difference easily by modified 'a' and 'b'
         elif mode==2:
-            imgTmpArray=(np.log(a*imgMode+b))
+            np.seterr(invalid='ignore',divide='ignore')
+            imgTmpArray=np.array(np.log(imgMode+b))*a
+# =========================================================
 
         outlier=imgTmpArray > 255
         imgTmpArray[outlier]=255
@@ -161,6 +170,7 @@ class DIPGUI(Frame):
         self.display(imgTmpArray,self.WIDTH_SIZE,self.HEIGHT_SIZE,self.degree)
         self.imgArrayCur=imgTmpArray
 
+    # change size of image (zoom/shrink)
     def sizeChange(self,test):
         time=2**(self.sizeChangeScale.get())
         self.widthCur=self.WIDTH_SIZE*time
@@ -179,10 +189,12 @@ class DIPGUI(Frame):
 
         self.display(sizeImg,self.widthCur,self.heightCur,self.degree)
 
+    # get rotate degree and pass to 'display' function
     def rotate(self,test):
         self.degree=self.rotateScale.get()
         self.display(self.imgArrayCur,self.WIDTH_SIZE,self.HEIGHT_SIZE,self.degree)
 
+    # turn image by using histogram equation and plot the histogram of image
     def histogram(self):
         height=self.imgArray.shape[0]
         width=self.imgArray.shape[1]
@@ -216,12 +228,20 @@ class DIPGUI(Frame):
         result[underfit]=0
 
         self.imgArrayCur=result
+        self.modImg=result
 
         imgTmp=Image.fromarray(np.uint8(result))
         imgTmp=ImageTk.PhotoImage(imgTmp)
         self.modLbl.configure(image=imgTmp)
         self.modLbl.image=imgTmp
 
+        plt.title("HIstogramm for Image")
+        plt.xlabel("Value")
+        plt.ylabel("pixels Frequency")
+        plt.hist(self.imgArray)
+        plt.show()
+
+    # reset modified frame and scale
     def reset(self):
         self.WIDTH_SIZE=256
         self.HEIGHT_SIZE=256
@@ -241,6 +261,7 @@ class DIPGUI(Frame):
             self.methodAScale.set(0)
             self.methodBScale.set(1)
 
+    # display image in 'modified frame' according to size and rotate degree
     def display(self,imgTmpArray,width,height,d):
         self.modLbl.destroy()
 

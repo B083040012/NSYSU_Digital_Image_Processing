@@ -64,9 +64,11 @@ class DIPGUI3(Frame):
         self.Q2cBtn=Button(master,text='Select Mode',command=self.Q2cModeSelect)
         self.Q2dBtn=Button(master,text='Select Mode',command=self.colorComple)
         self.rgbSmoothBtn=Button(master,text='RGB Smooth',command=self.rgbSmooth)
-        self.rgbSharpBtn=Button(master,text='RGB Sharp',command=self.rgbSharp)
+        self.rgbSharpBtn=Button(master,text='RGB Sharpen',command=self.rgbSharp)
         self.hsiSmoothBtn=Button(master,text='HSI Smooth',command=self.hsiSmooth)
-        self.hsiSharpBtn=Button(master,text='HSI Sharp',command=self.hsiSharp)
+        self.hsiSharpBtn=Button(master,text='HSI Sharpen',command=self.hsiSharp)
+        self.difSmoothBtn=Button(master,text='dif of Smoothing',command=self.difSmooth)
+        self.difSharpBtn=Button(master,text='dif of Sharpening',command=self.difSharp)
         self.Q2fBtn=Button(master,text='Feather Segmentation',command=self.featherSegment)
 
         # set label showing
@@ -91,7 +93,9 @@ class DIPGUI3(Frame):
         self.rgbSharpBtn.place(x=730,y=600)
         self.hsiSmoothBtn.place(x=600,y=650)
         self.hsiSharpBtn.place(x=730,y=650)
-        self.Q2fBtn.place(x=600,y=700)
+        self.difSmoothBtn.place(x=550,y=700)
+        self.difSharpBtn.place(x=700,y=700)
+        self.Q2fBtn.place(x=600,y=750)
 
         self.oriLbl.place(x=200,y=50,width=str(self.WIDTH_SIZE),height=str(self.HEIGHT_SIZE))
         self.modLbl.place(x=800,y=50,width=str(self.WIDTH_SIZE),height=str(self.HEIGHT_SIZE))
@@ -101,7 +105,7 @@ class DIPGUI3(Frame):
         self.Q2dLabel.place(x=50,y=750)
         self.Q2eRGBLabel.place(x=450,y=600)
         self.Q2eHSILabel.place(x=450,y=650)
-        self.Q2fLabel.place(x=450,y=700)
+        self.Q2fLabel.place(x=450,y=750)
 
     # save file from self.modImg on 'modified' frame
     def saveFile(self):
@@ -345,16 +349,6 @@ class DIPGUI3(Frame):
 
     # sharping process in rgb domain
     def rgbSharp(self):
-        # mask=[[0,0,-1,0,0],
-        #       [1,-1,-2,-1,0],
-        #       [-1,-2,17,-2,-1],
-        #       [1,-1,-2,-1,0],
-        #       [1,0,-1,0,0]]
-
-        # mask=[[-1,-1,-1],
-        #       [-1,8,-1],
-        #       [-1,-1,-1]]
-
         mask=[[0,1,0],
               [1,-4,1],
               [0,1,0]]
@@ -401,6 +395,56 @@ class DIPGUI3(Frame):
         imgTmp[:,:,2]=sharpMask
 
         imgTmp=self.hsiToRGB(imgTmp)
+
+        self.display(imgTmp,self.WIDTH_SIZE,self.HEIGHT_SIZE,3)
+
+    def difSmooth(self):
+        mask = np.ones([5, 5], dtype = np.uint8)
+        mask = mask / 25
+        rgb_imgTmp=np.float32(self.imgArray)
+        
+        for l in range(0,3):
+            rgb_imgTmp[:,:,l]=signal.convolve2d(rgb_imgTmp[:,:,l],mask,boundary='symm',mode='same')
+
+        hsi_imgTmp=np.zeros([self.height,self.width,self.length])
+        hsi_imgTmp[:,:,0]=self.hueConverter()
+        hsi_imgTmp[:,:,1]=self.satuConverter()
+        hsi_imgTmp[:,:,2]=self.intenConverter()
+
+        hsi_imgTmp[:,:,2]=signal.convolve2d(hsi_imgTmp[:,:,2],mask,boundary='symm',mode='same')
+
+        hsi_imgTmp=self.hsiToRGB(hsi_imgTmp)
+
+        imgTmp=rgb_imgTmp-hsi_imgTmp
+
+        self.display(imgTmp,self.WIDTH_SIZE,self.HEIGHT_SIZE,3)
+        
+
+    def difSharp(self):
+        mask=[[0,1,0],
+              [1,-4,1],
+              [0,1,0]]
+        rgb_imgTmp=np.float32(self.imgArray)
+
+        for l in range(0,3):
+            sharpMask=rgb_imgTmp[:,:,l]-signal.convolve2d(rgb_imgTmp[:,:,l],mask,boundary='symm',mode='same')
+            outlier=sharpMask<0
+            sharpMask[outlier]=0
+            rgb_imgTmp[:,:,l]=sharpMask
+
+        hsi_imgTmp=np.zeros([self.height,self.width,self.length])
+        hsi_imgTmp[:,:,0]=self.hueConverter()
+        hsi_imgTmp[:,:,1]=self.satuConverter()
+        hsi_imgTmp[:,:,2]=self.intenConverter()
+
+        sharpMask=hsi_imgTmp[:,:,2]-signal.convolve2d(hsi_imgTmp[:,:,2],mask,boundary='symm',mode='same')
+        outlier=sharpMask<0
+        sharpMask[outlier]=0
+        hsi_imgTmp[:,:,2]=sharpMask
+
+        hsi_imgTmp=self.hsiToRGB(hsi_imgTmp)
+
+        imgTmp=rgb_imgTmp-hsi_imgTmp
 
         self.display(imgTmp,self.WIDTH_SIZE,self.HEIGHT_SIZE,3)
 

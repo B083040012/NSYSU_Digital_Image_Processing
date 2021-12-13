@@ -16,6 +16,7 @@ import tkinter,os,cv2,math,statistics
 import numpy as np
 from scipy import ndimage
 import tkinter.filedialog
+from tkinter import filedialog
 import tkinter.font as TkFont
 from tkinter import *
 from PIL import  Image,ImageTk
@@ -66,6 +67,7 @@ class DIPGUI3(Frame):
         self.rgbSharpBtn=Button(master,text='RGB Sharp',command=self.rgbSharp)
         self.hsiSmoothBtn=Button(master,text='HSI Smooth',command=self.hsiSmooth)
         self.hsiSharpBtn=Button(master,text='HSI Sharp',command=self.hsiSharp)
+        self.Q2fBtn=Button(master,text='Feather Segmentation',command=self.featherSegment)
 
         # set label showing
         self.oriLbl=Label(bg="white",text="original",font=("Courier",30))
@@ -76,6 +78,7 @@ class DIPGUI3(Frame):
         self.Q2dLabel=Label(bg='white',fg='black',text='Q2(d)',font=("Courier",15))
         self.Q2eRGBLabel=Label(bg='white',fg='black',text='Q2(e)-RGB',font=("Courier",15))
         self.Q2eHSILabel=Label(bg='white',fg='black',text='Q2(e)-HSI',font=("Courier",15))
+        self.Q2fLabel=Label(bg='white',fg='black',text='Q2(f)',font=("Courier",15))
 
         # place all object on frame
         self.selectBtn.place(x=60,y=50)
@@ -88,6 +91,7 @@ class DIPGUI3(Frame):
         self.rgbSharpBtn.place(x=730,y=600)
         self.hsiSmoothBtn.place(x=600,y=650)
         self.hsiSharpBtn.place(x=730,y=650)
+        self.Q2fBtn.place(x=600,y=700)
 
         self.oriLbl.place(x=200,y=50,width=str(self.WIDTH_SIZE),height=str(self.HEIGHT_SIZE))
         self.modLbl.place(x=800,y=50,width=str(self.WIDTH_SIZE),height=str(self.HEIGHT_SIZE))
@@ -97,6 +101,7 @@ class DIPGUI3(Frame):
         self.Q2dLabel.place(x=50,y=750)
         self.Q2eRGBLabel.place(x=450,y=600)
         self.Q2eHSILabel.place(x=450,y=650)
+        self.Q2fLabel.place(x=450,y=700)
 
     # save file from self.modImg on 'modified' frame
     def saveFile(self):
@@ -109,14 +114,14 @@ class DIPGUI3(Frame):
 
     # select file by relative path and display it
     def selectFile(self):
-        ifile = tkinter.filedialog.askopenfile(initialdir=os.path.abspath('.'),mode='rb',title='Choose File',filetypes=[("image files",".tif .raw .tiff .jpg .png .jpeg .gif")])
+        self.ifile=filedialog.askopenfilename(title = "Select file",filetypes = (("tiff files","*.tif"),("tiff files","*.tiff"),("all files","*.*")))
         try:
-            if str(ifile).find(".raw")>=0:
-                ifile=str(ifile)[str(ifile).find("test_img/"):-2]
-                rawData = open(ifile, "rb").read()
+            if str(self.ifile).find(".raw")>=0:
+                self.ifile=str(self.ifile)[str(self.ifile).find("test_img/"):-2]
+                rawData = open(self.ifile, "rb").read()
                 self.oriImg = Image.frombytes("L", (512,512), rawData)
             else:
-                self.oriImg = Image.open(ifile)
+                self.oriImg = Image.open(self.ifile)
         except:
             return
 
@@ -237,12 +242,17 @@ class DIPGUI3(Frame):
 
         if self.Q2cNextMode==0:
             imgTmp=np.zeros([self.height,self.width,self.length])
-            imgTmp[:,:,0]=self.hueConverter()
+            hueTmp=self.hueConverter()
+            outlier=hueTmp>255
+            hueTmp[outlier]=255
+            imgTmp[:,:,0]=hueTmp
             imgTmp[:,:,1]=self.satuConverter()
             imgTmp[:,:,2]=self.intenConverter()
-            # imgTmp=self.hsiToRGB(imgTmp)
         elif self.Q2cNextMode==1:
-            imgTmp=self.hueConverter()
+            hueTmp=self.hueConverter()
+            outlier=hueTmp>255
+            hueTmp[outlier]=255
+            imgTmp=hueTmp
         elif self.Q2cNextMode==2:
             imgTmp=self.satuConverter()
         elif self.Q2cNextMode==3:
@@ -277,9 +287,8 @@ class DIPGUI3(Frame):
                     if blue[i][j] > green[i][j]:
                         imgTmp[i][j]=2*np.pi-imgTmp[i][j]
 
-                # imgTmp[i][j]=(imgTmp[i][j])/(2*np.pi)
-
-        return imgTmp*255
+        imgTmp=imgTmp*255
+        return imgTmp
         
     # saturation converter for hsi model
     def satuConverter(self):
@@ -290,8 +299,10 @@ class DIPGUI3(Frame):
 
         minTmp=np.minimum(np.minimum(red,green),blue)
         imgTmp=1-((3.00*minTmp)/(red+green+blue))
+        
+        imgTmp=imgTmp*255
 
-        return imgTmp*255
+        return imgTmp
 
     # itensity converter for hsi model
     def intenConverter(self):
@@ -393,6 +404,26 @@ class DIPGUI3(Frame):
 
         self.display(imgTmp,self.WIDTH_SIZE,self.HEIGHT_SIZE,3)
 
+    # feather segmentation for Q2(f)
+    def featherSegment(self):
+        img=cv2.imread(self.ifile)
+        
+        hsv=cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+        imgTmp=np.array(hsv)
+
+        for i in range(0,512):
+            for j in range(0,512):
+                if imgTmp[i][j][0]>150 and imgTmp[i][j][0]<156:
+                    imgTmp[i][j][1]=0
+                    imgTmp[i][j][2]=255
+                else:
+                    imgTmp[i][j][1]=255
+
+        imgTmp=self.hsiToRGB(imgTmp)
+        imgTmp=cv2.cvtColor(imgTmp,cv2.COLOR_HSV2RGB)
+        imgTmp=Image.fromarray(imgTmp)
+        self.display(imgTmp,512,512,3)
+
     # convert hsi model to rgb image
     def hsiToRGB(self,hsi_img):
         rgb_img = hsi_img.copy()
@@ -433,13 +464,10 @@ class DIPGUI3(Frame):
     def display(self,imgTmpArray,width,height,length):
         self.imgCurr=imgTmpArray
         imgTmp=Image.fromarray(np.uint8(imgTmpArray))
-        # imgTmpArray=np.asarray(imgTmpArray)
-        # imgTmp=Image.fromarray(imgTmpArray)
         if length==0:
             imgTmp=imgTmp.resize((int(width),int(height)),Image.ANTIALIAS)
         self.modImg=imgTmp
 
         imgTmp=ImageTk.PhotoImage(imgTmp)
-        # self.modLbl=Label(width=self.WIDTH_SIZE,height=self.HEIGHT_SIZE,bg="white",text="modified",font=("Courier",30),image=imgTmp)
         self.modLbl.config(image=imgTmp)
         self.modLbl.image=imgTmp

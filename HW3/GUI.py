@@ -398,6 +398,7 @@ class DIPGUI3(Frame):
 
         self.display(imgTmp,self.WIDTH_SIZE,self.HEIGHT_SIZE,3)
 
+    # difference of smoothing b/w RGB/HSI
     def difSmooth(self):
         mask = np.ones([5, 5], dtype = np.uint8)
         mask = mask / 25
@@ -419,7 +420,7 @@ class DIPGUI3(Frame):
 
         self.display(imgTmp,self.WIDTH_SIZE,self.HEIGHT_SIZE,3)
         
-
+    # difference of sharpening b/w RGB/HSI
     def difSharp(self):
         mask=[[0,1,0],
               [1,-4,1],
